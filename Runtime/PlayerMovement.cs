@@ -55,6 +55,7 @@ namespace Valax321.PlayerController
 
         public Vector3 velocity => m_velocity;
         public bool isGrounded => m_wasPreviouslyGrounded;
+        public Func<bool> disableUpdatePredicate { get; set; }
 
         #endregion
 
@@ -109,6 +110,9 @@ namespace Valax321.PlayerController
 
         private void Update()
         {
+            if (disableUpdatePredicate != null && disableUpdatePredicate())
+                return;
+            
             if (m_inputSource)
             {
                 UpdateCamera();
@@ -223,6 +227,10 @@ namespace Valax321.PlayerController
             {
                 wishdir = (m_cameraRoot.transform.forward * input.y) + (m_cameraRoot.transform.right * input.x);
                 gravity = Vector3.zero;
+                
+                m_velocity = (wishdir * (m_airAcceleration * 5));
+                transform.position += m_velocity * Time.deltaTime;
+                return;
             }
 
             if (m_swimVolumes.Count <= 0 && m_wasPreviouslyGrounded && !badSlope) //Was on the ground
@@ -277,18 +285,10 @@ namespace Valax321.PlayerController
             }
             else // In the air
             {
-                if (m_noClip)
-                {
-                    m_velocity = (wishdir * (m_airAcceleration * 5));
-                    transform.position += m_velocity * Time.deltaTime;
-                }
-                else
-                {
-                    m_velocity += (wishdir * m_airAcceleration) * Time.deltaTime;
-                    m_velocity += gravity.magnitude * slopeDir * Time.deltaTime;
-                    var mv = m_controller.Move(m_velocity * Time.deltaTime);
-                    m_wasPreviouslyGrounded = mv.HasFlag(CollisionFlags.Below);
-                }
+                m_velocity += (wishdir * m_airAcceleration) * Time.deltaTime;
+                m_velocity += gravity.magnitude * slopeDir * Time.deltaTime;
+                var mv = m_controller.Move(m_velocity * Time.deltaTime);
+                m_wasPreviouslyGrounded = mv.HasFlag(CollisionFlags.Below);
 
                 m_velocity = m_controller.velocity;
             }
